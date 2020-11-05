@@ -22,6 +22,7 @@ import eventlet
 import json
 import sys
 import signal
+import netifaces as ni
 
 from eyeblink import eyeblink
 from settings import APP_ROOT
@@ -274,8 +275,10 @@ if __name__ == '__main__':
         myeyeblink.bAttachSocket(socketio)
 
         print('starting server')
-        #host settings in 'this' namespace location if desired here
-        socketio.run(app, host='10.9.67.150', port=5010, use_reloader=True)
+        #Get the eth0 ip address and serve socket from here
+        ni.ifaddresses('eth0')
+        ip = ni.ifaddresses('eth0')[ni.AF_INET][0]['addr']
+        socketio.run(app, host=ip, port=5010, use_reloader=True)
         print('finished')
     except:
         print('...exiting')
