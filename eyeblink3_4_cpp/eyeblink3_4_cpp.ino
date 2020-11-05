@@ -444,7 +444,7 @@ void updateEncoder(unsigned long now) {
     
     long diff = now - rotaryencoder.count;
     
-    if (diff>=400){
+    if (diff>=20){
       signed long dist =  rotaryencoder.pos - posNow;
       serialOut(now, "rotary", dist);
       rotaryencoder.count = now;

@@ -23,6 +23,7 @@ import serial
 import time
 import os.path
 from threading import Thread
+import subprocess
 
 import eventlet
 eventlet.monkey_patch()
@@ -168,7 +169,7 @@ class eyeblink():
         if (c):
             print("dtsc initialized picamera")
             #Calling picamera with system arguments(savepath,animalID,sessionNumber)
-            os.system("python3 puffCamera2_0.py "+\
+            os.system("python3 piCamera2_0.py "+\
                 self.trial['filePath']+" "+\
                 self.animalID+" "+\
                 str(self.trial['sessionNumber'])+\
