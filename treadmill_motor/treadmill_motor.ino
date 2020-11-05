@@ -18,6 +18,8 @@
 #include <Wire.h> //I2C library
 
 //Pins
+int MS1pin = 4;
+int MS2pin = 5;
 int slpPin = 9;
 int stepPin = 11;
 int dirPin = 12;
@@ -45,6 +47,19 @@ Motor motor;
 
 void setup()
 {  
+  //Setup for microstepping
+  /*Logic table
+  MS1 MS2 Stepsize
+  L   L   1
+  H   L   1/2
+  L   H   1/4
+  H   H   1/8
+  */
+  pinMode(MS1pin,OUTPUT);
+  digitalWrite(MS1pin,LOW):
+  pinMode(MS2pin,OUTPUT);
+  digitalWrite(MS2pin,HIGH);
+  
   //Setup pin for deactivating the motor
   pinMode(slpPin,OUTPUT);
   digitalWrite(slpPin,LOW);//LOW = Motor in free run until receives commands

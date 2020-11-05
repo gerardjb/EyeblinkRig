@@ -24,8 +24,6 @@ import sys
 import signal
 
 from eyeblink import eyeblink
-from eyeblinkAnalysis import eyeblinkAnalysis
-from plotly_plot import myplotlyplot
 from settings import APP_ROOT
 
 #see: https://github.com/miguelgrinberg/Flask-SocketIO/issues/192
@@ -44,6 +42,7 @@ socketio = SocketIO(app, async_mode='eventlet')
 namespace = ''
 
 #Initializing objects attributes
+savepath = '/media/usb/' #location of mounted usb drive
 thread = None #second thread used by background_thread()
 ser = None
 myeyeblink = None
@@ -129,21 +128,6 @@ def dir_listing(req_path):
         print('IS DIRECTORY:', abs_path)
     files = os.listdir(abs_path)
     return render_template('files.html', path=req_path.replace('data/','') + '/', files=files)
-
-@app.route('/analysis')
-def analysis():
-    #list = myAnalysis.getlist()
-    #return render_template('analysis.html', list=list)
-    myAnalysis.builddb('')
-    return render_template('analysis2E.html')
-    
-@app.route('/help')
-def help():
-    return render_template('help.md')
-    
-@app.route('/p5')
-def index_highchart():
-    return render_template('p5.html')
 
 @app.route('/grafica')
 def index_grafica():
@@ -260,9 +244,6 @@ def trialform(message):
     myeyeblink.emptySerial()
     
     print('trialform() useMotor=', useMotor)
-    
-    trialDiv = myAnalysis.plottrialparams(myeyeblink.trial)
-    emit('trialPlotDiv', {'data': trialDiv})
 
     emit('serialdata', {'data': "=== Session Form Done ==="})
 
@@ -273,26 +254,6 @@ def animalform(message):
     myeyeblink.animalID = animalID
     #mytreadmill.settrial('dur', dur)
     emit('my response', {'data': "animal id is now '" + animalID + "'"})
-
-
-@socketio.on('plotSessionButtonID', namespace=namespace)
-def plotTrialButton(message):
-    filePath = message['data']
-    print('plotSessionButton() filename:' + filePath)
-    divStr = myplotlyplot(filePath,'div')
-    emit('lastSessionPlot', {'plotDiv': divStr})
-
-@socketio.on('plotTrialHeaderID', namespace=namespace)
-def plotTrialHeader(message):
-    filename = message['data']
-    print('plotTrialHeader() filename:' + filename)
-    headerStr = myAnalysis.loadheader(filename)
-    emit('headerDiv', {'headerStr': headerStr})
-
-@socketio.on('filterTrial', namespace=namespace)
-def filterTrial(message):
-    filename = myAnalysis.builddb(message['data'])
-    emit('refreshList', {'data': filename})
 
 def sig_handler(signal,frame):
     print('Signal handler called by eyeblink_app.py')
@@ -306,18 +267,11 @@ if __name__ == '__main__':
         #Make kill method for all processes and threads
         signal.signal(signal.SIGINT, sig_handler)
 
-        #Starting the camera as a subprocess
-        os.system("python3 eyeblinkCamera.py &")
-
         #Initializing the eyeblink object
         myeyeblink = eyeblink()
-        dataRoot = os.path.join(APP_ROOT, "data") + '/'
-        myeyeblink.setsavepath(dataRoot)
+        #dataRoot = os.path.join(APP_ROOT, "data") + '/'
+        #myeyeblink.setsavepath(dataRoot)
         myeyeblink.bAttachSocket(socketio)
-
-        #Starting the plotly_plots based ananlysis thread
-        myAnalysis = eyeblinkAnalysis()
-        myAnalysis.assignfolder(dataRoot)
 
         print('starting server')
         #host settings in 'this' namespace location if desired here

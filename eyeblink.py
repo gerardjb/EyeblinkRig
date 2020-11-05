@@ -12,7 +12,7 @@ if on Raspberry, using
     - serial to trigger a session/trial
     - serial for event logging
     - serial to stop a trial
-    - I2C in arduino code to control treadmill state
+    - I2C in arduino code to control eyeblink state
     
 todo:
     
@@ -84,11 +84,11 @@ class eyeblink():
             except:
                 self.ser = None
                 print "======================================================"
-                print "ERROR: treadmill did not find serial port '", options['serial']['port'], "'"
+                print "ERROR: eyeblink did not find serial port '", options['serial']['port'], "'"
                 print "======================================================"
 
         if options['picamera']:
-            print 'treadmill is using raspberry pi camera'
+            print 'eyeblink is using raspberry pi camera'
                 
         #serial is blocking. we need our trial to run in a separate thread so we do not block user interface
         self.trialRunning = 0
@@ -97,7 +97,7 @@ class eyeblink():
         thread.start()
             
         #save all serial data to file, set in setsavepath
-        self.savepath = ''
+        self.savepath = '/media/usb/'
         self.filePtr = None
         
         self.arduinoStateList = None #grab from arduino at start of trial, write into each epoch file
@@ -131,7 +131,7 @@ class eyeblink():
                     if self.filePtr:
                         self.filePtr.write(str + '\n')
                     
-                    #print "\t=== treadmill.NewSerialData sending serial data to socketio: '" + str + "'"
+                    #print "\t=== eyeblink.NewSerialData sending serial data to socketio: '" + str + "'"
                     if self.socketio:
                         self.socketio.emit('serialdata', {'data': str})
                     
@@ -162,6 +162,22 @@ class eyeblink():
         if self.socketio:
             self.socketio.emit('serialdata', {'data': "=== Session " + str(self.trial['sessionNumber']) + " ==="})
         
+		#Starting the camera as a subprocess
+        c = subprocess.check_output(["/opt/vc/bin/vcgencmd","get_camera"])
+        int(c.strip()[-1])
+        if (c):
+            print("dtsc initialized picamera")
+            #Calling picamera with system arguments(savepath,animalID,sessionNumber)
+            os.system("python3 puffCamera2_0.py "+\
+                self.trial['filePath']+" "+\
+                self.animalID+" "+\
+                str(self.trial['sessionNumber'])+\
+                " &")
+            raw_input('Hit return once camera is streaming')
+            time.sleep(1)
+        else:
+            print("Picamera already running")
+		
         self.ser.write('startSession\n')
         self.trialRunning = 1
 
@@ -206,7 +222,7 @@ class eyeblink():
         sessionFolder = ''
         if self.animalID and not (self.animalID == 'default'):
             sessionStr = self.animalID + '_'
-            sessionFolder = dateStr + '_' + self.animalID
+            sessionFolder = self.animalID + '_' + dateStr
         
         thisSavePath = self.savepath + dateStr + '/'
         if not os.path.exists(thisSavePath):
@@ -215,7 +231,7 @@ class eyeblink():
         if not os.path.exists(thisSavePath):
             os.makedirs(thisSavePath)
         
-        sessionFileName = sessionStr + datetimeStr + '_s' + str(self.trial['sessionNumber']) + '_t' + str(self.trial['trialNumber']) + '.txt'
+        sessionFileName = sessionStr + datetimeStr + '_s' + str(self.trial['sessionNumber']) + '.txt'
         sessionFilePath = thisSavePath + sessionFileName
         
         self.trial['filePath'] = sessionFilePath

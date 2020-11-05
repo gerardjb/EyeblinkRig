@@ -170,6 +170,9 @@ void setup()
   puffUS.isOnPuff = false;
   pinMode(puffUS.puffPin,OUTPUT);
   digitalWrite(puffUS.puffPin,LOW);
+
+  //give random seed to random number generator from analog 0
+  randomSeed(analogRead(0));
   
   //Initialize serial
   Serial.begin(115200);
@@ -196,6 +199,7 @@ void startSession(unsigned long now) {
     trial.currentTrial = 0;
     
     serialOut(now, "startSession", trial.sessionNumber);
+    digitalWrite(trial.trialPin,HIGH);
     serialOut(now, "startTrial", trial.currentTrial);
 
     trial.sessionIsRunning = true;
@@ -222,6 +226,7 @@ void startTrial(unsigned long now){
     trial.currentTrial += 1;
 
     trial.trialStartMillis = now;
+    digitalWrite(trial.trialPin,HIGH);
     serialOut(now,"startTrial",trial.currentTrial);
 
     trial.trialIsRunning = true;
@@ -241,9 +246,14 @@ void startTrial(unsigned long now){
 
 //End trial
 void stopTrial(unsigned long now) {
-  //
+  //If this is the last trial, end session
+  if (trial.currentTrial == trial.numTrial) {
+    stopSession(now);
+  }
   trial.trialIsRunning = false;
+  digitalWrite(trial.trialPin,LOW);
   serialOut(now, "stopTrial", trial.currentTrial);
+  
   //Set time to wait until next trial starts
   interTrialInterval = random(trial.interTrialIntervalLow,trial.interTrialIntervalHigh);
   trial.ITIstartMillis = now;
@@ -258,8 +268,12 @@ void stopSession(unsigned long now) {
       trial.trialIsRunning = false;
       serialOut(now,"stopTrial",trial.currentTrial);
     }
+    digitalWrite(trial.trialPin,LOW);
     trial.sessionIsRunning = false;
+    trial.trialIsRunning = false;
     serialOut(now,"stopSession",trial.sessionNumber);
+    trial.sessionNumber += 1;
+    trial.currentTrial = 0;
     
   //At manual or normal session end, stop motor
     /*I2C-directed*/
@@ -276,7 +290,7 @@ void stopSession(unsigned long now) {
 /////////////////////////////////////////////////////////////
 /*Communication via serial port */
 //Outputting info over the serial port
-void serialOut(unsigned long now, String str, unsigned long val) {
+void serialOut(unsigned long now, String str, signed long val) {
   Serial.println(String(now) + "," + str + "," + String(val));
 }
 
@@ -340,7 +354,8 @@ void GetState() {
 
 //Setting experiment parameters
 void SetTrial(String name, String strValue) {
-  int value = strValue.toInt();
+  float value = strValue.toFloat();
+  
   //Anytime trial params updated, start treadmill
   /*I2C-directed*/
     Wire.beginTransmission(8);
@@ -348,6 +363,7 @@ void SetTrial(String name, String strValue) {
     Wire.write(boolean(true));//this is a go command for the motor
     Wire.endTransmission();
     /**/
+    
   //trial
   if (name == "numTrial") {
     trial.numTrial = value;
@@ -415,7 +431,7 @@ void SetTrial(String name, String strValue) {
 /*Interacting with hardware components*/
 //Rotary encoder
 //Updating the position read off of the rotary encoder, dumping
-//difference to file if during a trial and changed after >100msec
+//difference to file if during a trial and changed after >specified msec
 void updateEncoder(unsigned long now) {
   signed long posNow = myEncoder.read();
   
@@ -475,18 +491,7 @@ void updatePuff(unsigned long now){
   }
 }
 
-//Conveying trial state
-void updateTrialPin(unsigned long now){
-  if (trial.trialIsRunning && !trial.pinOnOff){
-    digitalWrite(trial.trialPin,HIGH);
-    digitalWrite(13,HIGH);
-    trial.pinOnOff = true;
-  } else if (!trial.trialIsRunning && trial.pinOnOff){
-    digitalWrite(trial.trialPin,LOW);
-    digitalWrite(13,LOW);
-    trial.pinOnOff = false;
-  }
-}
+
 /////////////////////////////////////////////////////////////
 /*Loop*/
 void loop()
@@ -530,9 +535,7 @@ void loop()
   updateLED(now);
 
   updatePuff(now);
-
-  updateTrialPin(now);
   
-  delay(1); //ms
+  delayMicroseconds(300); //us
 
 }
