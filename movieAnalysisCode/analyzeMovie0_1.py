@@ -90,7 +90,7 @@ for idx,n in enumerate(subDirs):
 
 #%%
 #grabing the files and metadata from the chosen directory for analysis
-subDirIdx = [3]#[52]#np.arange(53,61)
+subDirIdx = [2]#[52]#np.arange(53,61)
 
 #Loop over all directories in pathMaster directory
 for thisSubDir in subDirIdx:
@@ -202,8 +202,6 @@ for thisSubDir in subDirIdx:
         else:
             interpEye = np.empty((len(timeBins)))
             interpEye[:] = np.nan
-            print(idx)
-        if np.mean(np.diff(thisEye))<0.01:
             print(idx)
         slices[idx] = interpEye
         pl.plot(timeBins-csTime,interpEye,linewidth=0.3,color=colors[idx])
