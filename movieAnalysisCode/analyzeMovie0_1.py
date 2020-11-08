@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Created on Mon Nov 25 10:49:15 2019
+analyzeMovie
+-0_1
+-0_2: follows dynamic directory naming convention of rig
 
 @author: wanglab
 """
@@ -80,7 +82,7 @@ def mjpg2array(filename):
 
 #%% Choose a directory
 #All camera and timestamp files
-pathMaster = r'C:\Users\PNI User\Desktop\Sessions2Add'
+pathMaster = r'Z:\Ali\20201108'
 subDirs = next(os.walk(pathMaster))[1]
 print('Available datasets:')
 for idx,n in enumerate(subDirs):
@@ -88,11 +90,11 @@ for idx,n in enumerate(subDirs):
 
 #%%
 #grabing the files and metadata from the chosen directory for analysis
-subDirIdx = [1,2,3,4]#[52]#np.arange(53,61)
+subDirIdx = [3]#[52]#np.arange(53,61)
 
 #Loop over all directories in pathMaster directory
 for thisSubDir in subDirIdx:
-    path = os.path.join(pathMaster,subDirs[thisSubDir],'rigData')
+    path = os.path.join(pathMaster,subDirs[thisSubDir])
     files = sorted([(d,f) for d,_,fs in os.walk(path) for f in fs if f.endswith('.data')])
     im_files = [os.path.join(*i) for i in files]
     csv_files = [os.path.join(d, os.path.splitext(f)[0] + '.csv') for d,f in files]
@@ -127,7 +129,6 @@ for thisSubDir in subDirIdx:
     sessionInfo = subDirs[thisSubDir].split('_')
     animalID = sessionInfo[0]
     date = sessionInfo[1]
-    session = sessionInfo[2]
     
     #%% pick roi
     imPickArray = mjpg2array(im_files[0])
@@ -152,21 +153,13 @@ for thisSubDir in subDirIdx:
         #Correct timestamps on trials that double (or triple) log preceeding trials
         count = 0
         while np.max(newData['time'])>6000:
-            newData['time'] = newData['time'] - ISI[idx-count] + 7.4
-            if np.max(newData['time'])>6000:
-                count+=1
+            newData['time'][0] = newData['time'][1] - np.mean(np.diff(newData['time'][1:]))
         
         #Read image data, process
         imArray = mjpg2array(im_files[idx])
         tr = imArray.reshape([len(imArray), -1]) @ roi.reshape(np.product(roi.shape))
-#        #Clean up sawtooth artifact if present
-#        trFilt = unfilt1D(tr,8)
-#        bg = tr - trFilt
-#        bgRm = bg
-#        bgRm[bg>3*np.std(bg)] = 0
-#        tr = tr - bg
+        
         #add session and trial info to the dataframe
-        newData.insert(0,'session',session)
         newData.insert(0,'date',date)
         newData.insert(0,'animalID',animalID)
         newData['trialType'] = trialTypes[idx]
@@ -182,7 +175,7 @@ for thisSubDir in subDirIdx:
     #%% pull pi Master-specific metadata
     csTime = float(headers['preCSdur'])#number of millis at which cs starts
     csusInt = float(headers['CS_USinterval'])#length of cs
-    camFreq = 150#frames per second for picamera #TIMES 2 FOR MR. NYQUIST!!!!!
+    camFreq = 80#frames per second for picamera #TIMES 2 FOR MR. NYQUIST!!!!!
     pad = [500,800]#ms pad before and after cs
     timeBins = np.arange(-pad[0]+csTime,pad[1]+csTime+csusInt,1)
     #Need parser for CS v. US trials
@@ -209,6 +202,8 @@ for thisSubDir in subDirIdx:
         else:
             interpEye = np.empty((len(timeBins)))
             interpEye[:] = np.nan
+            print(idx)
+        if np.mean(np.diff(thisEye))<0.01:
             print(idx)
         slices[idx] = interpEye
         pl.plot(timeBins-csTime,interpEye,linewidth=0.3,color=colors[idx])
@@ -277,6 +272,6 @@ for thisSubDir in subDirIdx:
     np.save(os.path.join(headDir,'_'.join(sessionInfo)+'traces.npy'),slices)
     
     #Saving trialTypes data to the 2P folder for Ca imaging pipeline
-    path2P = os.path.join(pathMaster,subDirs[thisSubDir],'2P data')
-    trialTypes = np.array(trialTypes)
-    np.savez(os.path.join(path2P,'_'.join(sessionInfo)+'trialTypes'),trialTypes)
+#    path2P = os.path.join(pathMaster,subDirs[thisSubDir],'2P data')
+#    trialTypes = np.array(trialTypes)
+#    np.savez(os.path.join(path2P,'_'.join(sessionInfo)+'trialTypes'),trialTypes)
