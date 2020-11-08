@@ -260,7 +260,7 @@ def sig_handler(signal,frame):
     print('Signal handler called by eyeblink_app.py')
     myeyeblink.__del__
     print('Process kill applied to piCamera2_0 subprocess')
-    os.system("pkill -9 -f piCamera.py")
+    os.system("pkill -9 -f piCamera2_0.py")
     sys.exit(0)
 
 if __name__ == '__main__':
